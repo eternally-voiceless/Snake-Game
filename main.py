@@ -1,6 +1,6 @@
 import sys
 import pygame
-from tools import GameObject, Playground, SnakeBlock
+from tools import GameObject, Grid, SnakeBlock
 
 pygame.init()
 
@@ -12,11 +12,7 @@ dt = 0
 test_snake_block = GameObject("./snake-parts/head.svg", (10, 10))
 
 margin = 1
-layer_left = 10
-layer_top = 10
-layer = Playground(window, (layer_left, layer_top), (28, 60))
-layer_right = layer_left+layer.get_width()-test_snake_block.get_size()[0]
-layer_bottom = layer_top+layer.get_height()-test_snake_block.get_size()[1]
+layer = Grid(window, (10, 10), (20, 60))
 
 while True:
     for event in pygame.event.get():
@@ -24,9 +20,8 @@ while True:
     window.fill("#0D1B2A")
     layer.draw()
 
-    test_snake_block.interact_with_user(200, dt).update(dt)
-    test_snake_block.restrict(window, layer_top, layer_bottom-margin, layer_left, layer_right-margin)
-    test_snake_block.draw(window)
+    test_snake_block.set_speed_by_click(100, dt).damping(10, dt).update(dt)
+    test_snake_block.restrict(layer).draw(window)
 
     pygame.display.update()
     dt = clock.tick(60)/1000

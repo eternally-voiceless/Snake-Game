@@ -92,8 +92,8 @@ class GameObject(pygame.sprite.Sprite):
     
     @velocity_x.setter
     def velocity_x(self, new_velocity_x):
-        if numpy.absolute(self._velocity_x)<10:
-            self._velocity_x = new_velocity_x
+        #if numpy.absolute(self._velocity_x)<10:
+        self._velocity_x = new_velocity_x
 
     @property
     def velocity_y(self):
@@ -101,8 +101,8 @@ class GameObject(pygame.sprite.Sprite):
     
     @velocity_y.setter
     def velocity_y(self, new_velocity_y):
-        if numpy.absolute(self._velocity_y)<10:
-            self._velocity_y = new_velocity_y
+        #if numpy.absolute(self._velocity_y)<10:
+        self._velocity_y = new_velocity_y
 
     @property
     def velocity(self):
@@ -138,75 +138,74 @@ class GameObject(pygame.sprite.Sprite):
 
         return self
 
+    def set_speed_by_click(self, speed: float=100, dt: float=0.001):
+        keys = pygame.key.get_pressed()
+
+        #axis y points down
+        if keys[pygame.K_UP] or keys[pygame.K_w]:
+            self.init_velocity_y = - speed
+            self.velocity_y += self.init_velocity_y
+        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+            self.init_velocity_y = speed
+            self.velocity_y += self.init_velocity_y
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            self.init_velocity_x = - speed
+            self.velocity_x += self.init_velocity_x
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            self.init_velocity_x = speed
+            self.velocity_x += self.init_velocity_x
+
+        return self
+            
+
     def update(self, dt: float):
-        self.move(self._velocity_x*dt, self._velocity_y*dt)
+        self.move(self.velocity_x*dt, self.velocity_y*dt)
         return self
 
-    def restrict(self, display: pygame.Surface, top: int = 0, bottom: int = 600, left: int = 0, right: int = 1000):
-        if self.x < left: self.x = left
-        if self.x > right: self.x = right
+    def restrict(self, area):
         # the axis y points down
-        if self.y < top: self.y = top
-        if self.y > bottom: self.y = bottom
-
-        """
-        if self.x <= left or self.x >= right:
-            self._velocity_x = -self._velocity_x
-        if self.y >= bottom or self.y <= top:
-            self._velocity_y = -self._velocity_y
-        """
+        if self.x < area.x:
+            self.x = area.x
+        if self.x > area.x+area.get_width()-self.get_width():
+            self.x = area.x+area.get_width()-self.get_width()
+        if self.y < area.y:
+            self.y = area.y
+        if self.y > area.y+area.get_height()-self.get_height():
+            self.y = area.y+area.get_height()-self.get_height()
 
         return self
-    
 
-"""
-class ViscousFluid:
-    def __init__(self, dynamic_viscosity = 1.4):
-        self.__viscosity = dynamic_viscosity
+    def damping(self, viscosity: float, dt: float):
+        radius = self.get_width()/2
+        attenuation_coefficient = 6*pi*viscosity*radius/self._mass
+        
+        dv_x = attenuation_coefficient*numpy.absolute(self.velocity_x)*dt
+        dv_y = attenuation_coefficient*numpy.absolute(self.velocity_y)*dt
 
-    @property
-    def viscosity(self):
-        return self.__viscosity
-    
-    @viscosity.setter
-    def viscosity(self, dynamic_viscosity):
-        if dynamic_viscosity<=0:
-            raise ValueError("Viscosity can't be less than or equal to zero.")
-        self.__viscosity = dynamic_viscosity
-    
+        if self.velocity_x>0:
+            self.velocity_x -= dv_x
+        if self.velocity_x<0:
+            self.velocity_x += dv_x
+        if numpy.absolute(self.velocity_x)<15:
+            self.velocity_x = 0
 
-    def damping(self, part: GameObject, dt):
-        part_width = part.get_width()
-        radius = part_width/2
+        if self.velocity_y>0:
+            self.velocity_y -= dv_y
+        if self.velocity_y<0:
+            self.velocity_y += dv_y
+        if numpy.absolute(self.velocity_y)<15:
+            self.velocity_y = 0
 
-        attenuation_coefficient = 6*pi*self.viscosity*radius/part.mass
-
-        dv_x = attenuation_coefficient*numpy.absolute(part.velocity_x)*dt
-        dv_y = attenuation_coefficient*numpy.absolute(part.velocity_y)*dt
-
-        if part.velocity_x>0:
-            part.velocity_x -= dv_x
-        if part.velocity_x<0:
-            part.velocity_x += dv_x
-        if numpy.absolute(part.velocity_x)<15:
-            part.velocity_x = 0
-
-        if part.velocity_y>0:
-            part.velocity_y -= dv_y
-        if part.velocity_y<0:
-            part.velocity_y += dv_y
-        if numpy.absolute(part.velocity_y)<15:
-            part.velocity_y = 0
-"""
+        return self
 
 
 # There are a few more specific classes for only snake-game below
 # palette: https://coolors.co/palette/0d1b2a-1b263b-415a77-778da9-e0e1dd
 
-class Playground:
+class Grid:
     def __init__(self, screen: pygame.Surface, position: tuple[int, int]=(100, 100), table: tuple[int, int]=(10,10), cell_size: int = 21):
         self._screen = screen
-        self._x, self._y = position
+        self.x, self.y = position
         self._rows, self._columns = table
         self._cell_size = cell_size
         self._width = self._columns*self._cell_size
@@ -220,13 +219,13 @@ class Playground:
     
     def draw(self, layer_1_color: str = "#778DA9", grid_color: str = "#1B263B"):
 
-        pygame.draw.rect(self._screen, layer_1_color, (self._x, self._y, self.get_width(), self.get_height()), border_radius = 2)
+        pygame.draw.rect(self._screen, layer_1_color, (self.x, self.y, self.get_width(), self.get_height()), border_radius = 2)
         for r in range(self._rows):
-            raw_y = self._y + r*self._cell_size
-            pygame.draw.line(self._screen, grid_color, (self._x, raw_y), (self._x + self.get_width(), raw_y), width=1)
+            raw_y = self.y + r*self._cell_size
+            pygame.draw.line(self._screen, grid_color, (self.x, raw_y), (self.x + self.get_width(), raw_y), width=1)
         for c in range(self._columns):
-            column_x = self._x + c*self._cell_size
-            pygame.draw.line(self._screen, grid_color, (column_x, self._y), (column_x, self._y + self.get_height()), width=1)
+            column_x = self.x + c*self._cell_size
+            pygame.draw.line(self._screen, grid_color, (column_x, self.y), (column_x, self.y + self.get_height()), width=1)
 
 
 class SnakeBlock(GameObject):
