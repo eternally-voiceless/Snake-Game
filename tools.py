@@ -162,7 +162,7 @@ class GameObject(pygame.sprite.Sprite):
         self.move(self.velocity_x*dt, self.velocity_y*dt)
         return self
 
-    def restrict(self, area):
+    def restrict(self, area: pygame.Surface):
         # the axis y points down
         if self.x < area.x:
             self.x = area.x
@@ -227,12 +227,36 @@ class Grid:
             column_x = self.x + c*self._cell_size
             pygame.draw.line(self._screen, grid_color, (column_x, self.y), (column_x, self.y + self.get_height()), width=1)
 
+        """for r in self.get_nodes():
+            for node in r:
+                pygame.draw.polygon(self._screen, "red", 
+                                    [
+                                        (node[0]-1, node[1]), 
+                                        (node[0]+1, node[1]),
+                                        (node[0], node[1]-1),
+                                        (node[0], node[1]+1)
+                                    ]
+                                    , 1)"""
+
+    def get_nodes(self):
+        nodes = []
+        row = []
+
+        for r in range(self._rows+1):
+            node_r = self.y + r*self._cell_size
+            for c in range(self._columns+1):
+                node_c = self.x + c*self._cell_size
+                row.append((node_c, node_r))
+            nodes.append(row)
+
+        return nodes
+
 
 class SnakeBlock(GameObject):
     def __init__(self, path_to_image: str, position: tuple[int, int] = (100, 100), velocity: tuple[float, float] = (0, 0), scaling_factor: float = 1):
         super().__init__(path_to_image, position, velocity, scaling_factor)
 
-    def interact_with_user(self, speed: float = 100):
+    def interact_with_user(self, grid: Grid, speed: float=100, dt: float=0.001):
         keys = pygame.key.get_pressed()
 
         # axis y points down
@@ -244,8 +268,44 @@ class SnakeBlock(GameObject):
             self.init_velocity_x, self.init_velocity_y = -speed, 0
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             self.init_velocity_x, self.init_velocity_y = speed, 0
+        
+        self.velocity_x, self.velocity_y = self.init_velocity_x, self.init_velocity_y
 
-        self._velocity_x, self._velocity_y = self.init_velocity_x, self.init_velocity_y
+        return self
 
+    def point_closest_node(self, window: pygame.Surface, grid: Grid):
+        pygame.draw.circle(window, "red", self.closest_nodes(grid), 0)
+        pass
+    
+    def closest_nodes(self, grid: Grid)->tuple:
+        #it works too slowly
+        center_x = self.x + self.get_width()/2
+        center_y = self.y + self.get_height()/2
+        #nodes = []
+        closest_node = None
+        closest_node_distance = numpy.inf
+        for r in grid.get_nodes():
+            for node in r:
+                distance_to_node = numpy.sqrt(numpy.power(center_x - node[0], 2)+numpy.power(center_y - node[1], 2))
+                closest_node = node if (distance_to_node<closest_node_distance) else closest_node
+        return closest_node
+        
+    def restrict(self, grid: Grid):
+        # return block to the map
+        if self.x<grid.x:
+            self.x = grid.x+grid.get_width()-self.get_width()
+            
+        if self.x>grid.x+grid.get_width()-self.get_width():
+            self.x = grid.x
+            
+        if self.y<grid.y:
+            self.y = grid.y+grid.get_height()-self.get_height()
+            
+        if self.y>grid.y+grid.get_height()-self.get_height():
+            self.y = grid.y
+
+        # keep block into the corridor
+        pass
+        
         return self
         
