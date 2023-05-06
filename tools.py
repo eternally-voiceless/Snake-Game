@@ -211,6 +211,16 @@ class Grid:
         self._width = self._columns*self._cell_size
         self._height = self._rows*self._cell_size
 
+        self._nodes = []
+        for r in range(self._rows+1):
+            node_r = self.y + r*self._cell_size
+            row = []
+            for c in range(self._columns+1):
+                node_c = self.x + c*self._cell_size
+                row.append((node_c, node_r))
+            self._nodes.append(row)
+        
+
     def get_width(self):
         return self._width
 
@@ -239,17 +249,7 @@ class Grid:
                                     , 1)"""
 
     def get_nodes(self):
-        nodes = []
-        row = []
-
-        for r in range(self._rows+1):
-            node_r = self.y + r*self._cell_size
-            for c in range(self._columns+1):
-                node_c = self.x + c*self._cell_size
-                row.append((node_c, node_r))
-            nodes.append(row)
-
-        return nodes
+        return self._nodes
 
 
 class SnakeBlock(GameObject):
@@ -271,24 +271,39 @@ class SnakeBlock(GameObject):
         
         self.velocity_x, self.velocity_y = self.init_velocity_x, self.init_velocity_y
 
+        # keep block inside the corridor
+
         return self
 
-    def point_closest_node(self, window: pygame.Surface, grid: Grid):
-        pygame.draw.circle(window, "red", self.closest_nodes(grid), 0)
-        pass
+    def point_closest_nodes(self, window: pygame.Surface, grid: Grid):
+        """This method for debugging"""
+        nodes = self.closest_nodes(grid)
+        for n in nodes:
+            pygame.draw.circle(window, "red", n, 1, 1)
+
+    """def point_next_closest_nodes(self, window: pygame.Surface, grid: Grid):
+        "This method for debugging"
+        for p in self.closest_nodes(grid):
+            if self.velocity_x>0:
+                node = (p[0]+grid., p[1])
+            pygame.draw.circle(window, "red", p, 1, 1)"""
     
-    def closest_nodes(self, grid: Grid)->tuple:
-        #it works too slowly
+    def closest_nodes(self, grid: Grid)->list[tuple]:
         center_x = self.x + self.get_width()/2
         center_y = self.y + self.get_height()/2
-        #nodes = []
-        closest_node = None
-        closest_node_distance = numpy.inf
+
+        closest_node = (grid.x, grid.y)
+        distance_to_node = numpy.inf
+        nodes_around = []
+
         for r in grid.get_nodes():
             for node in r:
-                distance_to_node = numpy.sqrt(numpy.power(center_x - node[0], 2)+numpy.power(center_y - node[1], 2))
-                closest_node = node if (distance_to_node<closest_node_distance) else closest_node
-        return closest_node
+                current_distance = numpy.sqrt(numpy.power(node[0]-center_x, 2) + numpy.power(node[1]-center_y, 2))
+                if current_distance<self.get_width():
+                    nodes_around.append((node[0], node[1]))
+        
+        return nodes_around
+
         
     def restrict(self, grid: Grid):
         # return block to the map
@@ -303,9 +318,8 @@ class SnakeBlock(GameObject):
             
         if self.y>grid.y+grid.get_height()-self.get_height():
             self.y = grid.y
-
-        # keep block into the corridor
-        pass
         
         return self
+    
+    
         
