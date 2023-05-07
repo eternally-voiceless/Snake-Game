@@ -255,31 +255,75 @@ class Grid:
 class SnakeBlock(GameObject):
     def __init__(self, path_to_image: str, position: tuple[int, int] = (100, 100), velocity: tuple[float, float] = (0, 0), scaling_factor: float = 1):
         super().__init__(path_to_image, position, velocity, scaling_factor)
+        self._up = False
+        self._down = False
+        self._left = False
+        self._right = False
 
     def interact_with_user(self, grid: Grid, speed: float=100, dt: float=0.001):
         keys = pygame.key.get_pressed()
-
+        surrounding_nodes = self.closest_nodes(grid)
+        
         # axis y points down
         if keys[pygame.K_UP] or keys[pygame.K_w]:
-            self.init_velocity_x, self.init_velocity_y = 0, -speed
+            if not (self._up and self._down and self._left and self._right):
+                self.velocity_y = -speed
+            self._up = True
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            self.init_velocity_x, self.init_velocity_y = 0, speed
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]: 
-            self.init_velocity_x, self.init_velocity_y = -speed, 0
+            if not (self._up and self._down and self._left and self._right):
+                self.velocity_y = speed
+            self._down = True
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            if not (self._up and self._down and self._left and self._right):
+                self.velocity_x = -speed
+            self._left = True
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-            self.init_velocity_x, self.init_velocity_y = speed, 0
-        
-        self.velocity_x, self.velocity_y = self.init_velocity_x, self.init_velocity_y
+            if not (self._up and self._down and self._left and self._right):
+                self.velocity_x = speed
+            self._right = True
 
         # keep block inside the corridor
+        if (self.velocity_x < 0 or self.velocity_x > 0) and self.velocity_y==0:
+            if self.y<surrounding_nodes[0][1] or self.y>surrounding_nodes[0][1]:
+                self.y = surrounding_nodes[0][1]
+        if (self.velocity_y < 0 or self.velocity_y > 0) and self.velocity_x==0:
+            if self.x<surrounding_nodes[0][0] or self.x>surrounding_nodes[0][0]:
+                self.x = surrounding_nodes[0][0]
+
+        if self._up:
+            if (self.velocity_x>0 and self.x>surrounding_nodes[1][0]) or (self.velocity_x<0 and self.x+self.get_width()<surrounding_nodes[0][0]):
+                self.velocity_x = 0
+                self.velocity_y = -speed
+                self._up = False
+
+        if self._down:
+            if (self.velocity_x>0 and self.x>surrounding_nodes[1][0]) or (self.velocity_x<0 and self.x+self.get_width()<surrounding_nodes[0][0]):
+                self.velocity_x = 0
+                self.velocity_y = speed
+                self._down = False
+
+        if self._left:
+            if (self.velocity_y>0 and self.y>surrounding_nodes[0][1]+self.get_height()) or (self.velocity_y<0 and self.y<surrounding_nodes[0][1]+self.get_height()):
+                self.velocity_y = 0
+                self.velocity_x = -speed
+                self._left = False
+
+        if self._right:
+            if (self.velocity_y>0 and self.y>surrounding_nodes[0][1]+self.get_height()) or (self.velocity_y<0 and self.y<surrounding_nodes[0][1]+self.get_height()):
+                self.velocity_y = 0
+                self.velocity_x = speed
+                self._right = False
 
         return self
 
     def point_closest_nodes(self, window: pygame.Surface, grid: Grid):
         """This method for debugging"""
         nodes = self.closest_nodes(grid)
+        colors = ["red", "blue", "purple", "#132a13"]
+        count = 0
         for n in nodes:
-            pygame.draw.circle(window, "red", n, 1, 1)
+            pygame.draw.circle(window, colors[count], n, 5, 1)
+            count+=1
 
     """def point_next_closest_nodes(self, window: pygame.Surface, grid: Grid):
         "This method for debugging"
@@ -292,10 +336,7 @@ class SnakeBlock(GameObject):
         center_x = self.x + self.get_width()/2
         center_y = self.y + self.get_height()/2
 
-        closest_node = (grid.x, grid.y)
-        distance_to_node = numpy.inf
         nodes_around = []
-
         for r in grid.get_nodes():
             for node in r:
                 current_distance = numpy.sqrt(numpy.power(node[0]-center_x, 2) + numpy.power(node[1]-center_y, 2))
@@ -322,4 +363,4 @@ class SnakeBlock(GameObject):
         return self
     
     
-        
+    
